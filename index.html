@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Sports Terminal</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card-bg: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e0;
+    --dim: #666;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --blue: #3b82f6;
+    --cyan: #06b6d4;
+    --orange: #f97316;
+    --purple: #a855f7;
+    --live-glow: rgba(239, 68, 68, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #12121a 0%, #1a1a2e 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, #fff, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--red);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+
+  .updated-time { color: var(--cyan); }
+
+  .refresh-select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .sport-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 24px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-wrap: wrap;
+  }
+
+  .sport-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--dim);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .sport-tab:hover { border-color: var(--blue); color: var(--text); }
+  .sport-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .sport-tab .tab-live { color: var(--red); font-weight: 700; margin-left: 4px; }
+
+  .content { padding: 20px 24px; }
+
+  .sport-section {
+    margin-bottom: 28px;
+  }
+
+  .sport-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sport-label {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .sport-count {
+    font-size: 12px;
+    color: var(--dim);
+  }
+
+  .sport-live-badge {
+    background: var(--red);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    animation: pulse 1.5s infinite;
+  }
+
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+
+  .game-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    transition: all 0.2s;
+  }
+
+  .game-card:hover {
+    border-color: #333;
+    transform: translateY(-1px);
+  }
+
+  .game-card.live {
+    border-color: var(--red);
+    background: var(--live-glow);
+  }
+
+  .game-card.final { border-color: #2a2a3a; }
+
+  .team-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+
+  .team-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .team-logo {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+  }
+
+  .team-abbr {
+    font-weight: 700;
+    font-size: 15px;
+    min-width: 42px;
+  }
+
+  .team-record {
+    font-size: 11px;
+    color: var(--dim);
+  }
+
+  .team-score {
+    font-size: 20px;
+    font-weight: 700;
+    min-width: 36px;
+    text-align: right;
+  }
+
+  .team-row.winner .team-abbr,
+  .team-row.winner .team-score { color: var(--green); }
+
+  .team-row.loser .team-abbr,
+  .team-row.loser .team-score { color: var(--dim); }
+
+  .game-card.live .team-score { color: var(--yellow); }
+
+  .game-status {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .status-text { color: var(--dim); }
+  .status-text.live { color: var(--red); font-weight: 700; }
+  .broadcast { color: var(--dim); font-size: 11px; }
+
+  .winner-arrow {
+    color: var(--green);
+    font-weight: 700;
+    margin-right: 4px;
+  }
+
+  .no-games {
+    text-align: center;
+    color: var(--dim);
+    padding: 40px;
+    font-size: 14px;
+  }
+
+  .loading {
+    text-align: center;
+    color: var(--dim);
+    padding: 60px;
+    font-size: 14px;
+  }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 600px) {
+    .header { padding: 12px 16px; }
+    .header h1 { font-size: 14px; }
+    .sport-tabs { padding: 8px 16px; }
+    .content { padding: 14px 16px; }
+    .games-grid { grid-template-columns: 1fr; gap: 10px; }
+    .game-card { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="live-dot" id="liveDot" style="display:none"></div>
+    <h1>LIVE SPORTS TERMINAL</h1>
+  </div>
+  <div class="header-right">
+    <span id="dateDisplay"></span>
+    <span>Updated: <span class="updated-time" id="updatedTime">--:--</span></span>
+    <select class="refresh-select" id="refreshSelect">
+      <option value="15">15s</option>
+      <option value="30" selected>30s</option>
+      <option value="60">60s</option>
+      <option value="120">2m</option>
+    </select>
+  </div>
+</div>
+
+<div class="sport-tabs" id="sportTabs"></div>
+<div class="content" id="content">
+  <div class="loading"><span class="loading-spinner"></span>Loading scores...</div>
+</div>
+
+<script>
+const SPORTS = {
+  nba:   { sport: "basketball", league: "nba",   label: "NBA",   color: "#f97316" },
+  nfl:   { sport: "football",   league: "nfl",   label: "NFL",   color: "#22c55e" },
+  mlb:   { sport: "baseball",   league: "mlb",   label: "MLB",   color: "#ef4444" },
+  nhl:   { sport: "hockey",     league: "nhl",   label: "NHL",   color: "#06b6d4" },
+  ncaaf: { sport: "football",   league: "college-football", label: "NCAAF", color: "#22c55e" },
+  ncaab: { sport: "basketball", league: "mens-college-basketball", label: "NCAAB", color: "#f97316" },
+  mls:   { sport: "soccer",     league: "usa.1", label: "MLS",   color: "#a855f7" },
+  epl:   { sport: "soccer",     league: "eng.1", label: "EPL",   color: "#a855f7" },
+  wnba:  { sport: "basketball", league: "wnba",  label: "WNBA",  color: "#f97316" },
+  ufc:   { sport: "mma",        league: "ufc",   label: "UFC",   color: "#ef4444" },
+};
+
+const BASE = "https://site.api.espn.com/apis/site/v2/sports";
+let activeSports = ["nba", "nfl", "mlb", "nhl"];
+let refreshInterval = 30;
+let timer = null;
+let allData = {};
+
+// Build tabs
+function buildTabs() {
+  const container = document.getElementById("sportTabs");
+  // "All" button
+  let html = `<button class="sport-tab" data-sport="all" onclick="toggleAll()">ALL</button>`;
+  for (const [key, cfg] of Object.entries(SPORTS)) {
+    const active = activeSports.includes(key) ? "active" : "";
+    html += `<button class="sport-tab ${active}" data-sport="${key}" onclick="toggleSport('${key}')" style="${active ? `border-color:${cfg.color}` : ''}">${cfg.label}<span class="tab-live" id="tab-live-${key}"></span></button>`;
+  }
+  container.innerHTML = html;
+}
+
+function toggleSport(key) {
+  const idx = activeSports.indexOf(key);
+  if (idx >= 0) activeSports.splice(idx, 1);
+  else activeSports.push(key);
+  if (activeSports.length === 0) activeSports.push(key); // must have at least 1
+  buildTabs();
+  renderAll();
+  savePrefs();
+}
+
+function toggleAll() {
+  if (activeSports.length === Object.keys(SPORTS).length) {
+    activeSports = ["nba", "nfl", "mlb", "nhl"];
+  } else {
+    activeSports = Object.keys(SPORTS).slice();
+  }
+  buildTabs();
+  fetchAll();
+  savePrefs();
+}
+
+function savePrefs() {
+  try { localStorage.setItem("sports-prefs", JSON.stringify({ sports: activeSports, refresh: refreshInterval })); } catch(e) {}
+}
+
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem("sports-prefs"));
+    if (p && p.sports) activeSports = p.sports;
+    if (p && p.refresh) { refreshInterval = p.refresh; document.getElementById("refreshSelect").value = refreshInterval; }
+  } catch(e) {}
+}
+
+async function fetchSport(key) {
+  const cfg = SPORTS[key];
+  const url = `${BASE}/${cfg.sport}/${cfg.league}/scoreboard`;
+  try {
+    const r = await fetch(url);
+    const data = await r.json();
+    allData[key] = data;
+  } catch (e) {
+    allData[key] = { error: e.message, events: [] };
+  }
+}
+
+async function fetchAll() {
+  const content = document.getElementById("content");
+  if (!Object.keys(allData).length) {
+    content.innerHTML = `<div class="loading"><span class="loading-spinner"></span>Loading scores...</div>`;
+  }
+  await Promise.all(activeSports.map(k => fetchSport(k)));
+  renderAll();
+  document.getElementById("updatedTime").textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function renderAll() {
+  const content = document.getElementById("content");
+  let html = "";
+  let totalLive = 0;
+
+  for (const key of activeSports) {
+    const data = allData[key];
+    if (!data) continue;
+    const cfg = SPORTS[key];
+    const events = data.events || [];
+    if (!events.length && !data.error) {
+      const tabLive = document.getElementById(`tab-live-${key}`);
+      if (tabLive) tabLive.textContent = "";
+      continue;
+    }
+
+    // Sort: live first, then scheduled, then final
+    const stateOrder = { in: 0, pre: 1, post: 2 };
+    events.sort((a, b) => (stateOrder[a.competitions[0].status.type.state] ?? 3) - (stateOrder[b.competitions[0].status.type.state] ?? 3));
+
+    const liveCount = events.filter(e => e.competitions[0].status.type.state === "in").length;
+    totalLive += liveCount;
+
+    // Update tab badge
+    const tabLive = document.getElementById(`tab-live-${key}`);
+    if (tabLive) tabLive.textContent = liveCount > 0 ? ` ${liveCount}` : "";
+
+    html += `<div class="sport-section">`;
+    html += `<div class="sport-header">`;
+    html += `<span class="sport-label" style="color:${cfg.color}">${cfg.label}</span>`;
+    html += `<span class="sport-count">${events.length} game${events.length !== 1 ? 's' : ''}</span>`;
+    if (liveCount > 0) html += `<span class="sport-live-badge">${liveCount} LIVE</span>`;
+    html += `</div>`;
+
+    if (data.error) {
+      html += `<div class="no-games" style="color:var(--red)">Error: ${data.error}</div>`;
+    } else {
+      html += `<div class="games-grid">`;
+      for (const event of events) {
+        html += renderGame(event);
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (!html) html = `<div class="no-games">No games found. Try selecting different leagues.</div>`;
+  content.innerHTML = html;
+
+  // Header live dot
+  document.getElementById("liveDot").style.display = totalLive > 0 ? "block" : "none";
+  document.title = totalLive > 0 ? `(${totalLive} LIVE) Sports Terminal` : "Live Sports Terminal";
+}
+
+function renderGame(event) {
+  const comp = event.competitions[0];
+  const status = comp.status.type;
+  const state = status.state;
+  const detail = status.shortDetail || status.description || "";
+
+  const competitors = comp.competitors;
+  const away = competitors.find(c => c.homeAway === "away") || competitors[1];
+  const home = competitors.find(c => c.homeAway === "home") || competitors[0];
+
+  const homeScore = parseInt(home.score) || 0;
+  const awayScore = parseInt(away.score) || 0;
+  const homeWin = homeScore > awayScore && state === "post";
+  const awayWin = awayScore > homeScore && state === "post";
+
+  const broadcasts = [];
+  for (const b of (comp.broadcasts || [])) {
+    for (const n of (b.names || [])) broadcasts.push(n);
+  }
+
+  const cardClass = state === "in" ? "live" : state === "post" ? "final" : "";
+
+  let statusClass = "";
+  let statusText = detail;
+  if (state === "in") {
+    statusClass = "live";
+    statusText = "LIVE: " + detail;
+  } else if (state === "post") {
+    statusText = detail.toUpperCase().includes("OT") ? detail : "Final";
+  }
+
+  function teamRow(c, isWinner, isLoser) {
+    const t = c.team;
+    const logo = t.logo || "";
+    const abbr = t.abbreviation || "???";
+    const record = c.records && c.records[0] ? c.records[0].summary : "";
+    const score = c.score || "";
+    const cls = isWinner ? "winner" : isLoser ? "loser" : "";
+    const arrow = isWinner ? `<span class="winner-arrow">▸</span>` : `<span style="margin-right:4px;visibility:hidden">▸</span>`;
+
+    return `<div class="team-row ${cls}">
+      <div class="team-info">
+        ${arrow}
+        ${logo ? `<img class="team-logo" src="${logo}" alt="${abbr}" loading="lazy" onerror="this.style.display='none'">` : ''}
+        <span class="team-abbr">${abbr}</span>
+        <span class="team-record">${record}</span>
+      </div>
+      ${state !== "pre" ? `<span class="team-score">${score}</span>` : ''}
+    </div>`;
+  }
+
+  return `<div class="game-card ${cardClass}">
+    ${teamRow(away, awayWin, homeWin && state === "post")}
+    ${teamRow(home, homeWin, awayWin && state === "post")}
+    <div class="game-status">
+      <span class="status-text ${statusClass}">${statusText}</span>
+      <span class="broadcast">${broadcasts.slice(0, 2).join(", ")}</span>
+    </div>
+  </div>`;
+}
+
+// Date display
+document.getElementById("dateDisplay").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+
+// Refresh control
+document.getElementById("refreshSelect").addEventListener("change", (e) => {
+  refreshInterval = parseInt(e.target.value);
+  clearInterval(timer);
+  timer = setInterval(fetchAll, refreshInterval * 1000);
+  savePrefs();
+});
+
+// Init
+loadPrefs();
+buildTabs();
+fetchAll();
+timer = setInterval(fetchAll, refreshInterval * 1000);
+</script>
+</body>
+</html>
